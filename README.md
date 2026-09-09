@@ -1,6 +1,6 @@
 # 🏗️ Complete Guide to System Design
 
-Welcome to the **System Design Master Guide**. This repository provides an easy-to-understand, comprehensive breakdown of **System Design**, its **Types (High-Level Design vs. Low-Level Design)**, core architectural patterns, and **multiple practical real-world examples**.
+Welcome to the **System Design Master Guide**. This repository provides an easy-to-understand, comprehensive breakdown of **System Design**, its **Types (High-Level Design vs. Low-Level Design)**, core architectural patterns, **Functional vs. Non-Functional Requirements**, and **multiple practical real-world examples**.
 
 ---
 
@@ -12,13 +12,14 @@ Welcome to the **System Design Master Guide**. This repository provides an easy-
    - [1. High-Level Design (HLD)](#1-high-level-design-hld---the-architectural-blueprint)
    - [2. Low-Level Design (LLD)](#2-low-level-design-lld---the-detailed-code-blueprint)
 5. [HLD vs LLD Comparison](#-hld-vs-lld-comparison)
-6. [Multiple Real-World Examples](#-multiple-real-world-examples)
+6. [Functional vs Non-Functional Requirements](#-functional-vs-non-functional-requirements)
+7. [Multiple Real-World Examples](#-multiple-real-world-examples)
    - [Example 1: Real-Time Messaging App (WhatsApp)](#example-1-real-time-chat-system-whatsapp---hld--lld)
    - [Example 2: Video Streaming Platform (YouTube/Netflix)](#example-2-video-streaming-platform-youtubenetflix---hld)
    - [Example 3: Ride-Sharing Platform (Uber)](#example-3-ride-sharing-service-uber---hld)
    - [Example 4: Object-Oriented Parking Lot System](#example-4-parking-lot-system---lld)
-7. [Key System Design Trade-offs & Concepts](#-key-system-design-trade-offs--concepts)
-8. [How to Approach a System Design Interview / Problem](#-how-to-approach-a-system-design-problem)
+8. [Key System Design Trade-offs & Concepts](#-key-system-design-trade-offs--concepts)
+9. [How to Approach a System Design Interview / Problem](#-how-to-approach-a-system-design-problem)
 
 ---
 
@@ -122,6 +123,62 @@ Low-Level Design focuses on the **micro-architecture** ("the detailed implementa
 | **Primary Diagrams** | Flowcharts, Component Diagrams, Network Maps | Class Diagrams, Sequence Diagrams, ER Diagrams |
 | **Key Deliverable** | Architecture Document, Infrastructure Setup | API Specifications, DB Schemas, Source Code |
 | **Example Topic** | Choosing Kafka vs RabbitMQ for async jobs | Implementing the Observer Pattern for email alerts |
+
+---
+
+## 🎯 Functional vs Non-Functional Requirements
+
+Before designing system architecture, engineers define two fundamental types of requirements:
+
+### 🚗 The Simple Car Analogy
+* **Functional Requirement (WHAT it does)**: The car has a steering wheel to turn, a gas pedal to accelerate, and brakes to stop.
+* **Non-Functional Requirement (HOW WELL it performs)**: The car accelerates 0-60 mph in 3.5 seconds, gets a 5-star crash safety rating, and maintains 99.9% reliability.
+
+---
+
+### ⚙️ 1. Functional Requirements (FR) - *What the system MUST DO*
+Functional Requirements define specific features, user capabilities, and business logic.
+
+#### Key Aspects:
+* Specifies input data, processing rules, and output results.
+* Easily tested with Pass/Fail test cases.
+
+#### 📌 Examples of Functional Requirements:
+1. **E-Commerce (Amazon)**: *"Users can search items, add them to a shopping cart, and pay via credit card."*
+2. **Digital Banking**: *"Users can transfer money between accounts and receive a transaction receipt."*
+3. **Social Media (Instagram)**: *"Users can upload photos, apply filters, and write comments."*
+4. **Ride-Sharing (Uber)**: *"Riders can select a pickup location and request a nearby driver."*
+5. **Video Streaming (Netflix)**: *"Users can stream video content and save movies to a watch list."*
+
+---
+
+### ⚡ 2. Non-Functional Requirements (NFR) - *How WELL the system MUST PERFORM*
+Non-Functional Requirements define quality attributes, operational limits, security levels, and performance constraints.
+
+#### Key Categories:
+* **Performance & Speed**: Response times and page load latencies.
+* **Scalability**: Ability to handle traffic growth (e.g., 100,000 requests per second).
+* **Availability & Reliability**: System uptime (e.g., 99.99% availability = < 52 mins downtime per year).
+* **Security**: Data encryption (TLS/AES-256), authentication, and authorization.
+
+#### 📌 Examples of Non-Functional Requirements:
+1. **E-Commerce (Amazon)**: *"Checkout page must render in < 1.5 seconds under peak traffic."* *(Performance)*
+2. **Digital Banking**: *"All financial transactions must be encrypted using AES-256 encryption."* *(Security)*
+3. **Social Media (Instagram)**: *"The feed service must support 100,000 active concurrent users."* *(Scalability)*
+4. **Ride-Sharing (Uber)**: *"GPS location pings must reach rider screens within 2 seconds."* *(Latency)*
+5. **Video Streaming (Netflix)**: *"Video playback buffering must start within 2 seconds globally."* *(Performance)*
+
+---
+
+### 📊 FR vs NFR Comparison Table
+
+| Feature | Functional Requirements (FR) | Non-Functional Requirements (NFR) |
+| :--- | :--- | :--- |
+| **Main Question** | What must the system **DO**? | How well must it **PERFORM**? |
+| **Focus** | User features & business rules | Performance, security, uptime & scalability |
+| **Primary Audience** | Product Owners & End Users | System Architects & Security Engineers |
+| **Testing Type** | Functional, Unit & Integration testing | Performance, Stress, Penetration & Load testing |
+| **Failure Result** | Feature fails or breaks | System slows down, crashes, or leaks data |
 
 ---
 
@@ -311,4 +368,5 @@ Follow this 5-step framework in interviews or software architecture planning:
 * **System Design** translates business requirements into scalable software systems.
 * **HLD** plans the big infrastructure components (Load Balancers, DBs, Caches, Microservices).
 * **LLD** details the code implementation (Classes, DB tables, API schemas, Design patterns).
-* Master both to build resilient, enterprise-grade applications!
+* **Requirements**: Functional Requirements define *WHAT* the system does; Non-Functional Requirements define *HOW WELL* it performs.
+* Master these concepts to build resilient, enterprise-grade applications!

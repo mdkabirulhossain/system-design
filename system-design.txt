@@ -1,5 +1,5 @@
 ========================================================================
-                           SYSTEM DESIGN
+                      SYSTEM DESIGN - EASY GUIDE
 ========================================================================
 
 ------------------------------------------------------------------------
@@ -156,3 +156,66 @@ Example Component   | Database, Cache, Load Balancer| Class interface, Enum, SQL
 5. Asynchronous Processing:
    Doing long tasks in the background (like sending confirmation emails) 
    so the user doesn't have to wait.
+
+
+------------------------------------------------------------------------
+6. FUNCTIONAL VS NON-FUNCTIONAL REQUIREMENTS
+------------------------------------------------------------------------
+
+Before designing any system, engineers must understand two types of 
+requirements:
+
+Analogy: Buying a Car
+---------------------
+- Functional (WHAT it does): The car has a steering wheel to turn, a gas 
+  pedal to accelerate, and brakes to stop.
+- Non-Functional (HOW WELL it performs): The car goes 0 to 60 mph in 3.5 
+  seconds, gets 5-star crash safety, and has 99.9% engine reliability.
+
+
+A. FUNCTIONAL REQUIREMENTS (FR) - "What the system MUST DO"
+------------------------------------------------------------
+Functional Requirements describe features, user actions, and system 
+behaviors.
+
+Characteristics:
+- Focuses on features and business rules.
+- Specifies input, process, and expected output.
+- Easily tested as Pass or Fail.
+
+Examples of Functional Requirements:
+1. E-Commerce (Amazon): "User can add items to shopping cart and pay via credit card."
+2. Digital Banking: "User can transfer money from Account A to Account B."
+3. Social Media (Instagram): "User can upload a photo and tag a friend."
+4. Ride-Sharing (Uber): "Rider can select a destination and request a ride."
+5. Video Streaming (Netflix): "User can search for movies by title or genre."
+
+
+B. NON-FUNCTIONAL REQUIREMENTS (NFR) - "How WELL the system MUST PERFORM"
+------------------------------------------------------------------------
+Non-Functional Requirements describe quality qualities, speed, security, 
+and system standards.
+
+Key Quality Attributes:
+- Performance (Speed & Latency): How fast pages load.
+- Scalability: How many users can use the system at the same time.
+- Availability & Reliability: Uptime percentage (e.g. 99.99% uptime).
+- Security: Data encryption and protection against hacking.
+- Usability: How easy the system is to use.
+
+Examples of Non-Functional Requirements:
+1. E-Commerce (Amazon): "Checkout page must load in under 1.5 seconds during peak sales." (Performance)
+2. Digital Banking: "All transaction data must be encrypted with AES-256 and require MFA." (Security)
+3. Social Media (Instagram): "System must handle 100,000 active users simultaneously." (Scalability)
+4. Ride-Sharing (Uber): "Driver GPS updates must reach rider screen within 2 seconds." (Latency)
+5. Video Streaming (Netflix): "Video playback buffer must start within 2 seconds globally." (Performance)
+
+
+C. SUMMARY TABLE: FR vs NFR
+---------------------------
+Feature          | Functional Requirements (FR)   | Non-Functional Requirements (NFR)
+-----------------+--------------------------------+-----------------------------------
+Main Question    | WHAT must the system do?       | HOW WELL must it perform?
+Focus Area       | User Features & Business Rules | Performance, Security, Scalability
+Tested By        | Functional / Feature Testing   | Load, Stress & Security Testing
+Failure Result   | A feature fails to work        | App slows down, crashes, or leaks data
