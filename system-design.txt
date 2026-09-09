@@ -1,0 +1,158 @@
+========================================================================
+                           SYSTEM DESIGN
+========================================================================
+
+------------------------------------------------------------------------
+1. WHAT IS SYSTEM DESIGN?
+------------------------------------------------------------------------
+
+System Design is the process of planning and defining how different 
+parts of a software application work together to solve a problem.
+
+Analogy: Building a House
+-------------------------
+Think of building a big house:
+- Before laying bricks, an architect draws a floor plan (where rooms go, 
+  where doors and windows will be).
+- Plumbers design the pipe network, and electricians plan the wiring.
+- System Design is just like that blueprint, but for software!
+
+Instead of rooms and pipes, software system design plans:
+- Databases (where data is stored)
+- Servers (where business logic runs)
+- Networks (how computers talk to each other)
+- Security & Caching (how to keep things safe and fast)
+
+
+------------------------------------------------------------------------
+2. WHY IS SYSTEM DESIGN IMPORTANT?
+------------------------------------------------------------------------
+
+1. Handles Growth (Scalability):
+   If 10 users visit your website, it's easy. But what if 1,000,000 users 
+   visit at the exact same time? Good system design keeps the site alive.
+
+2. Prevents Crashes (High Availability):
+   If one computer breaks down, the application should keep running without 
+   stopping.
+
+3. Fast Response Times (Low Latency):
+   Users hate waiting. Good design makes sure pages load in milliseconds.
+
+4. Cost Efficiency:
+   Prevents buying expensive servers when smart caching or database 
+   indexing can solve the problem for free.
+
+
+------------------------------------------------------------------------
+3. TYPES OF SYSTEM DESIGN
+------------------------------------------------------------------------
+
+System design is divided into two main levels:
+
+========================================================================
+TYPE 1: HIGH-LEVEL DESIGN (HLD) - "The Big Picture"
+========================================================================
+
+High-Level Design focuses on overall system architecture. It defines 
+the big building blocks and how they connect. It does NOT focus on 
+writing code.
+
+Key Focus of HLD:
+- What components are needed? (Load Balancer, Web Server, Database, Cache)
+- How do data flows move from user to database?
+- How will the system scale when user traffic grows?
+- Which technology stack fits best?
+
+Main Components in HLD:
+1. Load Balancer: Distributes incoming traffic evenly across multiple servers.
+2. Web/API Servers: Runs application logic.
+3. Database: Stores persistent data (SQL or NoSQL).
+4. Cache (e.g., Redis): Stores frequent data in RAM for super-fast access.
+5. Message Queue (e.g., Kafka, RabbitMQ): Processes tasks in the background asynchronously.
+
+Example 1 of HLD: WhatsApp System Architecture
+- User sends a message -> Touches Load Balancer.
+- Load Balancer routes message to an active Chat Server.
+- Chat Server checks if receiver is online via Presence Server.
+- If receiver is online -> Message delivered directly via WebSocket.
+- If receiver is offline -> Message stored in Database and queued in Notification Service.
+
+Example 2 of HLD: E-Commerce Web Store (e.g., Amazon)
+- User browses items -> Request goes to CDN and Cache for fast loading.
+- User clicks "Buy" -> Request hits API Gateway -> Order Service created.
+- Order Service notifies Payment Service and Inventory Service using a Message Queue.
+
+
+========================================================================
+TYPE 2: LOW-LEVEL DESIGN (LLD) - "The Detailed Specs & Code"
+========================================================================
+
+Low-Level Design focuses on micro-details inside a single module or 
+service. It explains HOW to write the actual code and design classes.
+
+Key Focus of LLD:
+- Class diagrams and Object-Oriented Design (OOD).
+- Database table schemas (columns, primary keys, foreign keys).
+- API signatures (request payloads, status codes, response JSON).
+- Algorithms and Data Structures used inside functions.
+- Software Design Patterns (Singleton, Factory, Strategy, Observer).
+
+Example 1 of LLD: Payment Gateway Processor (Code Structure)
+- Class: PaymentProcessor (Abstract Interface)
+  - Method: processPayment(Amount, PaymentMethod)
+- Implementation Classes:
+  - CreditCardPayment implements PaymentProcessor
+  - PaypalPayment implements PaymentProcessor
+  - CryptoPayment implements PaymentProcessor
+- Pattern Used: Strategy Pattern (allows easy swapping of payment methods without changing core order code).
+
+Example 2 of LLD: Chat Message Schema (Database Table)
+Table Name: messages
+-------------------------------------------------------------------
+Column Name    | Data Type    | Description
+-------------------------------------------------------------------
+message_id     | BIGINT (PK)  | Unique ID of the message
+sender_id      | INT (FK)     | User who sent the message
+receiver_id    | INT (FK)     | User who receives the message
+content        | TEXT         | Message body text
+status         | ENUM         | 'SENT', 'DELIVERED', 'READ'
+created_at     | TIMESTAMP    | Time when sent
+-------------------------------------------------------------------
+
+
+------------------------------------------------------------------------
+4. HLD vs LLD: SUMMARY COMPARISON
+------------------------------------------------------------------------
+
+Feature             | High-Level Design (HLD)      | Low-Level Design (LLD)
+--------------------+------------------------------+-----------------------------
+Scope               | Entire System Architecture   | Single Module / Component
+Target Audience     | Solution Architects, Leads   | Software Engineers, Developers
+Key Artifacts       | Architecture Diagrams        | Class Diagrams, DB Schemas
+Focus Question      | WHAT components are needed?  | HOW do we code each part?
+Example Component   | Database, Cache, Load Balancer| Class interface, Enum, SQL table
+
+
+------------------------------------------------------------------------
+5. KEY SYSTEM DESIGN CONCEPTS (TERMS TO KNOW)
+------------------------------------------------------------------------
+
+1. Scalability (Vertical vs Horizontal):
+   - Vertical (Scale Up): Buying a bigger, stronger computer (CPU/RAM).
+   - Horizontal (Scale Out): Adding MORE computers to share the workload.
+
+2. Caching:
+   Storing heavy or frequent queries in ultra-fast memory (RAM) so the 
+   database doesn't get overloaded.
+
+3. Load Balancing:
+   Acting like a traffic cop to spread network requests across multiple 
+   servers so no single server gets overwhelmed.
+
+4. Database Sharding:
+   Splitting one giant database into smaller pieces across multiple servers.
+
+5. Asynchronous Processing:
+   Doing long tasks in the background (like sending confirmation emails) 
+   so the user doesn't have to wait.
