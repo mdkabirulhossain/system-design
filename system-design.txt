@@ -219,3 +219,294 @@ Main Question    | WHAT must the system do?       | HOW WELL must it perform?
 Focus Area       | User Features & Business Rules | Performance, Security, Scalability
 Tested By        | Functional / Feature Testing   | Load, Stress & Security Testing
 Failure Result   | A feature fails to work        | App slows down, crashes, or leaks data
+
+
+------------------------------------------------------------------------
+7. STEP 1: FUNDAMENTALS (HLD)
+------------------------------------------------------------------------
+
+High-Level Design begins with fundamental infrastructure and OS-level 
+concepts that govern how applications scale, process work, and communicate.
+
+========================================================================
+TOPIC 1.1: SERVERLESS VS SERVERFUL ARCHITECTURE
+========================================================================
+
+Analogy: Renting an Apartment vs. Booking a Taxi / Hotel Room
+- Serverful (Renting an Apartment): You pay monthly rent 24/7 regardless of 
+  whether you are home, sleeping, or away. You maintain the space and pay bills.
+- Serverless (Booking an Uber/Taxi): You don't own or maintain the car. You 
+  pay strictly for the distance/time traveled. When idle, you pay $0.
+
+1. Serverful Architecture (Traditional Dedicated Server):
+   - Definition: Provisioning dedicated VMs (e.g. AWS EC2, Linux VPS) running processes 24/7.
+   - Traffic Flow: Client ---> Load Balancer ---> EC2 Web Server (24/7) ---> Database
+   - Pros: Zero cold starts (always warm in RAM), cheaper for continuous steady high traffic, no execution time limits.
+   - Cons: Pay 100% price during zero-traffic idle periods, high OS/server management overhead.
+
+2. Serverless Architecture (Event-Driven / FaaS):
+   - Definition: Cloud provider (AWS Lambda, GCP Cloud Functions) manages hardware, OS, and scaling. Functions run on-demand and terminate.
+   - Traffic Flow: Client ---> API Gateway ---> AWS Lambda (On-Demand) ---> Database
+   - Pros: Pay per millisecond ($0 when idle), zero server maintenance, instant auto-scaling (0 to 10k+).
+   - Cons: Cold start latency (100ms-1s on idle wakeup), 15-minute execution limit, vendor lock-in.
+
+Comparison Table:
+Feature             | Serverful Architecture       | Serverless Architecture
+--------------------+------------------------------+-----------------------------
+Management          | You manage OS & VMs          | 100% Cloud Provider Managed
+Cost Model          | Fixed hourly rate            | Pay per millisecond of execution
+Idle Cost           | Pay 100% full price          | Pay $0 (Zero cost)
+Cold Starts         | None (Runs 24/7)             | Possible delay on cold invocation
+Max Run Time        | Unlimited                    | Time limited (e.g., 15 mins)
+
+
+========================================================================
+TOPIC 1.2: HORIZONTAL VS VERTICAL SCALING
+========================================================================
+
+Analogy: Buying a Bigger Truck vs. Buying a Fleet of Delivery Vans
+- Vertical (Bigger Truck): Upgrade your single truck with a bigger engine and larger cargo space.
+- Horizontal (Fleet of Vans): Buy 10 small vans and distribute packages across all 10 drivers.
+
+1. Vertical Scaling (Scale Up):
+   - Definition: Upgrading a single server by adding more CPU cores, RAM, or SSD storage.
+   - Pros: Simple to implement (no architecture or code changes required), no complex state synchronization.
+   - Cons: Hardware ceiling (hard physical limit on max CPU/RAM), Single Point of Failure (SPOF), exponential cost curve at top-tier specs, requires server downtime to upgrade.
+
+2. Horizontal Scaling (Scale Out):
+   - Definition: Adding more server nodes to a resource pool behind a Load Balancer.
+   - Traffic Flow: Client ---> Load Balancer ---> Server 1 / Server 2 / Server 3 ---> DB
+   - Pros: Near-infinite scaling capacity, High Availability (if 1 server dies, others handle traffic), cost-effective linear pricing.
+   - Cons: Requires stateless server design (sessions stored in Redis/JWT), higher distributed architecture complexity.
+
+Summary Comparison:
+Feature             | Vertical Scaling (Scale Up)  | Horizontal Scaling (Scale Out)
+--------------------+------------------------------+-----------------------------
+Approach            | Upgrade 1 existing machine   | Add MORE machines to cluster
+Hardware Limit      | Hard ceiling (Max CPU/RAM)   | Near Infinite
+Fault Tolerance     | Low (SPOF if machine dies)   | High (Redundant servers)
+Downtime            | Required during hardware upgrade| Zero downtime rolling upgrades
+Architecture        | Monolithic-friendly          | Requires Stateless Microservices
+
+
+========================================================================
+TOPIC 1.3: WHAT ARE THREADS?
+========================================================================
+
+Analogy: Restaurant Kitchen (Process) and Chefs (Threads)
+- A Process is the entire kitchen space with its own physical room and tools.
+- Threads are individual chefs working inside that kitchen, sharing the 
+  countertop space, fridge, and utensils to cook dishes simultaneously.
+
+1. Process vs. Thread:
+   - Process: An executing program with its own isolated memory address space.
+   - Thread: The smallest unit of execution inside a process. Threads within the same process share memory (heap), opening up fast communication but risking data corruption if unmanaged.
+
+2. Concurrency vs. Parallelism:
+   - Concurrency: Managing multiple tasks at once by context-switching rapidly (1 CPU core juggling tasks).
+   - Parallelism: Executing multiple tasks at the exact same instant across separate CPU cores.
+
+3. Context Switching:
+   - The OS saving CPU state (registers, stack pointer) of a thread and loading state of another thread. Excessive context switching degrades system performance.
+
+4. Thread Safety & Race Conditions:
+   - Happens when multiple threads attempt to write to shared memory concurrently.
+   - Solution: Synchronization mechanisms like Locks, Semaphores, Mutexes, or Atomic Variables.
+
+5. Architecture Concurrency Models:
+   - Thread-per-request Model (Java Spring / Apache Tomcat): Creates/assigns a dedicated thread per HTTP connection. (High memory cost under 100k connections).
+   - Single-threaded Event Loop Model (Node.js / NGINX / Redis): Single thread uses non-blocking asynchronous I/O to handle tens of thousands of concurrent connections effortlessly.
+
+
+========================================================================
+TOPIC 1.4: WHAT ARE PAGES?
+========================================================================
+
+In System Design and Computer Science, "Pages" refers to two critical concepts: OS Virtual Memory Paging and Database Query Pagination.
+
+A. OS Virtual Memory Paging:
+----------------------------
+Analogy: A Ring-Binder Notebook with Fixed 4KB Pages
+- Physical RAM is divided into fixed-size blocks called "Frames", and Virtual Memory is divided into matching blocks called "Pages" (typically 4KB).
+- Page Table: A lookup table maintained by OS and MMU (Memory Management Unit) mapping Virtual Memory addresses to Physical RAM address frames.
+- Page Fault: Occurs when a process requests a memory page that is NOT currently loaded in RAM, but stored on disk (Swap file). OS pauses execution, reads the page from disk into RAM (slow I/O), and updates Page Table.
+
+B. Database Pagination (Query Result Pages):
+-------------------------------------------
+Analogy: Reading a 1,000-page book page by page instead of all at once.
+When retrieving millions of records, returning all rows crashes the browser. We split results into "pages".
+
+1. Offset-Based Pagination:
+   - SQL: `SELECT * FROM products ORDER BY id LIMIT 20 OFFSET 10000;`
+   - Problem: Database must read through first 10,020 rows and discard 10,000 rows. Becomes very slow ($O(N)$) as OFFSET grows large.
+
+2. Cursor-Based / Keyset Pagination (High-Performance HLD Choice):
+   - SQL: `SELECT * FROM products WHERE id > 10000 ORDER BY id LIMIT 20;`
+   - Advantage: Uses database index directly to jump to record. Stays fast ($O(1)$) regardless of deep page depth.
+
+
+========================================================================
+TOPIC 1.5: HOW DOES THE INTERNET WORK? (STEP-BY-STEP FLOW)
+========================================================================
+
+Analogy: Addressing, Mailing, and Delivering a Letter Across the Globe.
+
+When a user types `https://example.com` into a web browser and hits Enter, 
+the following 5-step sequence occurs in milliseconds:
+
+Step 1: DNS Lookup (Domain Name System - Resolving IP Address)
+- Browser checks internal DNS Cache.
+- If missing, checks OS Cache -> Router Cache -> ISP DNS Resolver.
+- If still missing, queries Root DNS Server -> TLD Server (.com) -> Authoritative DNS Server.
+- Result: Returns destination IP Address (e.g. `93.184.216.34`).
+
+Step 2: TCP 3-Way Handshake (Establishing Connection)
+- Client sends `SYN` (Synchronize) packet to Server.
+- Server responds with `SYN-ACK` (Synchronize-Acknowledge).
+- Client sends `ACK` (Acknowledge). Connection established!
+
+Step 3: TLS/SSL Handshake (Securing the Connection for HTTPS)
+- Client and Server negotiate encryption algorithms (RSA, Diffie-Hellman).
+- Server presents SSL Certificate for authentication.
+- A symmetric session key is generated to encrypt all traffic (AES-256).
+
+Step 4: HTTP Request & Response Cycle
+- Client sends HTTP Request (`GET /index.html HTTP/1.1` + Headers + Cookies).
+- Request travels through Internet Routers -> CDN (Cloudflare) -> Load Balancer -> Web Server -> Database.
+- Web Server processes business logic and returns HTTP Response (`200 OK` + HTML/JSON payload).
+
+Step 5: Browser Rendering Pipeline
+- Browser receives HTML payload.
+- Parses HTML to construct DOM Tree (Document Object Model).
+- Parses CSS to construct CSSOM Tree.
+- Combines DOM + CSSOM to create Render Tree.
+- Executes JavaScript code via V8 engine.
+- Paints pixels on user screen.
+
+
+------------------------------------------------------------------------
+8. STEP 2: DATABASES (HLD)
+------------------------------------------------------------------------
+
+Data storage is the backbone of System Design. Choosing and structuring 
+the database tier defines system scalability and consistency.
+
+========================================================================
+TOPIC 2.1: SQL VS NOSQL DATABASES
+========================================================================
+
+Analogy: Rigid Excel Spreadsheets (SQL) vs. Flexible Document Folders (NoSQL).
+
+1. SQL Databases (Relational / RDBMS):
+   - Examples: PostgreSQL, MySQL, Oracle, SQL Server.
+   - Structure: Strict tabular schema with tables, rows, columns, and foreign keys.
+   - ACID Compliance: Guaranteed Atomicity, Consistency, Isolation, Durability. (Crucial for Banking & Financial transactions).
+   - Scaling: Primarily Vertically Scaled; Horizontal scaling via Read Replicas & manual Sharding.
+
+2. NoSQL Databases (Non-Relational):
+   - Types:
+     * Document DBs (MongoDB, CouchDB): Stores data as JSON/BSON documents.
+     * Key-Value Stores (Redis, DynamoDB): Ultra-fast lookup by primary key.
+     * Wide-Column Stores (Cassandra, ScyllaDB): High write throughput across columns.
+     * Graph DBs (Neo4j): Stores nodes and edges for social networks & fraud detection.
+   - BASE Compliance: Basically Available, Soft-state, Eventual Consistency.
+   - Scaling: Native Horizontal Scaling (Auto-sharded out of the box).
+
+Comparison Summary:
+Feature             | SQL (Relational)             | NoSQL (Non-Relational)
+--------------------+------------------------------+-----------------------------
+Data Model          | Tables & Rows (Rigid Schema) | JSON, Key-Value, Columnar (Flexible)
+Transactions        | Strict ACID Guarantees       | BASE (Eventual Consistency)
+Joins               | Native SQL JOIN support      | No native JOINs (App-level handle)
+Primary Use Case    | Banking, ERP, Orders         | Real-time feeds, Analytics, Big Data
+
+
+========================================================================
+TOPIC 2.2: IN-MEMORY DATABASES & CACHING
+========================================================================
+
+Analogy: Keeping active documents on your desk (RAM) vs. walking to a 
+basement file cabinet every time (Disk Database).
+
+1. What is an In-Memory Database?
+   - Storing data directly in RAM instead of mechanical Hard Drives or SSDs.
+   - Delivers sub-millisecond response times (< 1ms).
+   - Popular Tools: Redis, Memcached.
+
+2. Caching Strategies:
+   - Cache-Aside (Lazy Loading): Application reads Cache. If Miss -> reads DB -> writes to Cache -> returns data. (Most common pattern).
+   - Write-Through: Application writes to Cache -> Cache synchronously writes to DB before returning success. (Ensures data consistency).
+   - Write-Back (Write-Behind): Application writes to Cache -> Cache asynchronously writes to DB in background batches. (Blazing fast writes, but risk of data loss if cache crashes before flush).
+
+3. Cache Eviction Policies (When RAM gets full):
+   - LRU (Least Recently Used): Evicts data that hasn't been requested for the longest time.
+   - LFU (Least Frequently Used): Evicts data with the lowest access count.
+   - TTL (Time To Live): Automatically expires key after X seconds.
+
+4. Redis Persistence (Handling RAM Volatility):
+   - RDB (Redis Database Snapshots): Point-in-time snapshot saved to disk at intervals.
+   - AOF (Append-Only File): Logs every write operation to disk sequentially for complete recovery.
+
+
+========================================================================
+TOPIC 2.3: DATA REPLICATION & MIGRATION
+========================================================================
+
+Analogy: Photocopying a master document across multiple office branches.
+
+1. Replication Architecture Models:
+   - Single-Leader (Master-Replica): 1 Master Node handles all Writes; multiple Replica Nodes handle Reads. (Perfect for read-heavy apps like Twitter/Reddit).
+   - Multi-Leader (Master-Master): Multiple nodes accept Writes across geographically distributed data centers. (Requires conflict resolution strategies).
+   - Leaderless (Dynamo-Style / Cassandra): Any node accepts Reads & Writes. Uses Quorum Voting ($R + W > N$) to ensure data consistency.
+
+2. Synchronous vs. Asynchronous Replication:
+   - Synchronous: Master waits for Replica to confirm write before returning success to user. (100% data consistency, slower write speed).
+   - Asynchronous: Master responds instantly to user and copies data to Replicas in background. (Super fast, but risk of minor data loss if Master crashes before sync).
+
+3. Zero-Downtime Data Migration (Dual-Writing Strategy):
+   - Step 1: Dual-Write (Application writes new data to BOTH Old DB & New DB).
+   - Step 2: Backfill Historical Data (Copy past data from Old DB to New DB via Change Data Capture - CDC).
+   - Step 3: Verification (Run checksums to verify data identity).
+   - Step 4: Switch Reads (Point read traffic to New DB).
+   - Step 5: Deprecate Old DB (Stop writing to Old DB).
+
+
+========================================================================
+TOPIC 2.4: DATA PARTITIONING
+========================================================================
+
+Analogy: Organizing filing cabinets by alphabet ranges (A-G, H-N, O-Z).
+
+Partitioning splits a large dataset into smaller, isolated subsets (partitions) 
+to improve query performance and manageability.
+
+1. Partitioning Dimensions:
+   - Vertical Partitioning: Splitting a table by COLUMNS. (e.g. Move heavy `user_bio` and `avatar_blob` into Table B; keep lightweight `user_id`, `email` in Table A).
+   - Horizontal Partitioning: Splitting a table by ROWS based on a partition key.
+
+2. Horizontal Partitioning Strategies:
+   - Range-Based Partitioning: Partitioning by date or numeric ranges (e.g. `orders_2024`, `orders_2025`). Risk: Hotspotting if current range gets all traffic.
+   - Hash-Based Partitioning: `Partition_ID = Hash(User_ID) % Total_Partitions`. Distributes data evenly across all partitions to eliminate hotspots.
+   - List-Based Partitioning: Partitioning by explicit categories (e.g. Country: `US`, `EU`, `ASIA`).
+
+
+========================================================================
+TOPIC 2.5: DATABASE SHARDING
+========================================================================
+
+Analogy: Splitting a massive national library across 10 separate physical buildings in 10 cities.
+
+Sharding is horizontal partitioning *across multiple independent database servers (nodes)*.
+
+1. The Shard Key:
+   - The column selected to determine which database node receives a query (e.g. `user_id`, `tenant_id`).
+   - Good Shard Key: High cardinality, even data distribution, included in 90%+ of queries.
+   - Bad Shard Key: Low cardinality (e.g. `gender`), causes massive single-shard hotspots.
+
+2. Consistent Hashing (Minimizing Re-sharding Chaos):
+   - Traditional Modulo Hashing (`Hash % N`) breaks when adding a new server node (99% of data must move).
+   - Consistent Hashing maps servers and data onto a virtual 360-degree Hash Ring. Adding or removing a server node only requires moving $1/N$ of the data!
+
+3. Architectural Challenges of Sharding:
+   - Cross-Shard Joins: SQL `JOIN` across separate servers is impossible natively; must be handled in application layer.
+   - Distributed Transactions: Updating data on Shard A and Shard B requires 2-Phase Commit (2PC) or Saga Pattern to avoid partial failure.

@@ -12,14 +12,22 @@ Welcome to the **System Design Master Guide**. This repository provides an easy-
    - [1. High-Level Design (HLD)](#1-high-level-design-hld---the-architectural-blueprint)
    - [2. Low-Level Design (LLD)](#2-low-level-design-lld---the-detailed-code-blueprint)
 5. [HLD vs LLD Comparison](#-hld-vs-lld-comparison)
-6. [Functional vs Non-Functional Requirements](#-functional-vs-non-functional-requirements)
-7. [Multiple Real-World Examples](#-multiple-real-world-examples)
-   - [Example 1: Real-Time Messaging App (WhatsApp)](#example-1-real-time-chat-system-whatsapp---hld--lld)
-   - [Example 2: Video Streaming Platform (YouTube/Netflix)](#example-2-video-streaming-platform-youtubenetflix---hld)
-   - [Example 3: Ride-Sharing Platform (Uber)](#example-3-ride-sharing-service-uber---hld)
-   - [Example 4: Object-Oriented Parking Lot System](#example-4-parking-lot-system---lld)
-8. [Key System Design Trade-offs & Concepts](#-key-system-design-trade-offs--concepts)
-9. [How to Approach a System Design Interview / Problem](#-how-to-approach-a-system-design-problem)
+6. [Step 1: Fundamentals (HLD Roadmap)](#-step-1-fundamentals-hld-roadmap)
+   - [1.1 Serverless vs Serverful Architecture](#11-serverless-vs-serverful-architecture)
+   - [1.2 Horizontal vs Vertical Scaling](#12-horizontal-vs-vertical-scaling)
+   - [1.3 What are Threads?](#13-what-are-threads)
+   - [1.4 What are Pages? (OS Paging & DB Pagination)](#14-what-are-pages-os-paging--db-pagination)
+   - [1.5 How Does the Internet Work?](#15-how-does-the-internet-work)
+7. [Step 2: Databases (HLD Roadmap)](#-step-2-databases-hld-roadmap)
+   - [2.1 SQL vs NoSQL Databases](#21-sql-vs-nosql-databases)
+   - [2.2 In-Memory Databases & Caching](#22-in-memory-databases--caching)
+   - [2.3 Data Replication & Migration](#23-data-replication--migration)
+   - [2.4 Data Partitioning](#24-data-partitioning)
+   - [2.5 Database Sharding](#25-database-sharding)
+8. [Functional vs Non-Functional Requirements](#-functional-vs-non-functional-requirements)
+9. [Multiple Real-World Examples](#-multiple-real-world-examples)
+10. [Key System Design Trade-offs & Concepts](#-key-system-design-trade-offs--concepts)
+11. [How to Approach a System Design Interview / Problem](#-how-to-approach-a-system-design-problem)
 
 ---
 
@@ -123,6 +131,252 @@ Low-Level Design focuses on the **micro-architecture** ("the detailed implementa
 | **Primary Diagrams** | Flowcharts, Component Diagrams, Network Maps | Class Diagrams, Sequence Diagrams, ER Diagrams |
 | **Key Deliverable** | Architecture Document, Infrastructure Setup | API Specifications, DB Schemas, Source Code |
 | **Example Topic** | Choosing Kafka vs RabbitMQ for async jobs | Implementing the Observer Pattern for email alerts |
+
+---
+
+## 🚀 Step 1: Fundamentals (HLD Roadmap)
+
+High-Level Design begins with core infrastructure concepts that determine how application servers scale, process background work, allocate memory, and route network packets.
+
+---
+
+### 1.1 Serverless vs Serverful Architecture
+
+Engineers must choose how application code will be executed: using **Serverful (Traditional Dedicated Servers)** or **Serverless (Function-as-a-Service / Managed Cloud)**.
+
+#### 🚗 The Apartment vs. Taxi Analogy
+* **Serverful (Renting an Apartment)**: You pay monthly rent regardless of whether you are home, sleeping, or away on vacation. You handle maintenance and utilities.
+* **Serverless (Booking an Uber/Taxi)**: You don't own or maintain the vehicle. You request a ride, get driven to your destination, and pay strictly for the distance/time traveled. When idle, you pay **$0**.
+
+```
+[ Serverful ]  : Client ──► Load Balancer ──► EC2 Server (Runs 24/7) ──► DB
+[ Serverless ] : Client ──► API Gateway ──► AWS Lambda (Runs on demand) ──► DB
+```
+
+| Feature | Serverful Architecture | Serverless Architecture |
+| :--- | :--- | :--- |
+| **Management** | You manage OS, security patches, and VMs | 100% Cloud Provider Managed |
+| **Cost Model** | Fixed hourly / monthly instance rate | Pay per millisecond of execution time |
+| **Idle Cost** | Pay 100% full server price | Pay **$0** (Zero cost when idle) |
+| **Scaling** | Rule-based Auto Scaling Groups (takes minutes) | Instant auto-scaling (0 to 10,000+ in seconds) |
+| **Cold Starts** | None (Server process runs 24/7) | Potential latency on idle function wakeup |
+| **Max Run Time**| Unlimited (runs 24/7) | Time-bounded (e.g., 15-min AWS Lambda limit) |
+
+---
+
+### 1.2 Horizontal vs Vertical Scaling
+
+When application traffic grows from 100 to 1,000,000 users, systems must scale up or out.
+
+#### 🚚 The Bigger Truck vs. Van Fleet Analogy
+* **Vertical Scaling (Scale Up)**: Buying a bigger truck with a stronger engine to carry heavier cargo.
+* **Horizontal Scaling (Scale Out)**: Buying 10 delivery vans to split cargo across 10 drivers.
+
+```
+[ Vertical Scaling ]  : [ Server 8GB RAM ] ──► [ Server 128GB RAM (Upgraded) ]
+[ Horizontal Scaling]: [ Load Balancer ] ──► [ Server 1 ] + [ Server 2 ] + [ Server 3 ]
+```
+
+#### Comparison Table:
+| Dimension | Vertical Scaling (Scale Up) | Horizontal Scaling (Scale Out) |
+| :--- | :--- | :--- |
+| **Approach** | Add more CPU/RAM to 1 existing machine | Add MORE machine instances to pool |
+| **Hardware Capacity**| Physical hardware ceiling limit | Near-infinite scale |
+| **Fault Tolerance** | Low (Single Point of Failure - SPOF) | High (Traffic routes away from dead nodes) |
+| **Downtime** | Required during hardware upgrades | Zero-downtime rolling deployments |
+| **Application Type**| Monolithic applications | Stateless Microservices |
+
+---
+
+### 1.3 What are Threads?
+
+Understanding OS processes and threads is essential for designing concurrent servers.
+
+#### 👩‍🍳 The Restaurant Kitchen Analogy
+* **Process**: The entire kitchen facility with its own isolated building space and tools.
+* **Thread**: Individual chefs working inside the kitchen, sharing the countertop space, refrigerators, and ovens to prepare dishes simultaneously.
+
+```
+┌─────────────────────────── PROCESS ───────────────────────────┐
+│ Memory Address Space (Heap, Code, Global Variables)           │
+│                                                               │
+│  ┌──────────────┐      ┌──────────────┐      ┌──────────────┐ │
+│  │   Thread 1   │      │   Thread 2   │      │   Thread 3   │ │
+│  │ (Stack/Regs) │      │ (Stack/Regs) │      │ (Stack/Regs) │ │
+│  └──────────────┘      └──────────────┘      └──────────────┘ │
+└───────────────────────────────────────────────────────────────┘
+```
+
+#### Core Concepts:
+1. **Concurrency vs Parallelism**:
+   * *Concurrency*: Juggling multiple tasks on a single CPU core via rapid context switching.
+   * *Parallelism*: Executing multiple tasks at the exact same instant on separate CPU cores.
+2. **Context Switching**: The OS saving state of a thread and restoring state of another. High context switching overhead slows down servers.
+3. **Thread Safety & Race Conditions**: Unsynchronized concurrent writes to shared memory cause data corruption. Solved via Locks, Semaphores, or Mutexes.
+4. **Concurrency Models**:
+   * *Thread-Per-Request* (Java Spring/Tomcat): 1 dedicated thread per HTTP connection. High RAM consumption at scale.
+   * *Single-Threaded Event Loop* (Node.js/Redis/NGINX): Non-blocking I/O event loop handles 10,000+ connections on 1 thread.
+
+---
+
+### 1.4 What are Pages? (OS Paging & DB Pagination)
+
+In System Design, "Pages" refers to **OS Virtual Memory Paging** and **Database Query Pagination**.
+
+#### A. OS Virtual Memory Paging
+* **Concept**: Physical RAM is divided into fixed blocks called **Frames**, and Virtual Memory is divided into matching **Pages** (typically 4KB).
+* **Page Table**: Managed by OS/MMU to map Virtual addresses to Physical RAM.
+* **Page Fault**: When a requested memory page is missing from physical RAM and must be fetched from disk (Swap space) $\rightarrow$ causes disk I/O latency.
+
+#### B. Database Result Pagination
+When querying millions of records, fetching all rows crashes client browsers. Data must be paginated:
+
+1. **Offset-Based Pagination**:
+   ```sql
+   SELECT * FROM orders ORDER BY created_at DESC LIMIT 20 OFFSET 10000;
+   ```
+   * *Problem*: Database reads first 10,020 rows and discards 10,000. $O(N)$ slowdown on deep pages!
+2. **Cursor-Based / Keyset Pagination (High-Performance Choice)**:
+   ```sql
+   SELECT * FROM orders WHERE id > 10000 ORDER BY id ASC LIMIT 20;
+   ```
+   * *Advantage*: Uses database index directly. Performs at $O(1)$ constant speed regardless of page depth.
+
+---
+
+### 1.5 How Does the Internet Work? (Step-by-Step Request Flow)
+
+When a user opens a browser and types `https://example.com`, the request flows through 5 main steps:
+
+```
+[ User Browser ] ──1. DNS Lookup──► [ DNS Resolver ] (IP: 93.184.216.34)
+       │
+       ├──2. TCP 3-Way Handshake──► (SYN ➔ SYN-ACK ➔ ACK)
+       ├──3. TLS Encryption Handshake (HTTPS Security Key)
+       ├──4. HTTP Request GET / ──► [ CDN / Load Balancer ] ──► [ API Server ]
+       └──5. Render HTML/DOM ◄──── [ 200 OK Response ]
+```
+
+1. **DNS Resolution**: Browser checks Browser Cache $\rightarrow$ OS Cache $\rightarrow$ Router $\rightarrow$ ISP DNS Resolver $\rightarrow$ Root/TLD DNS Servers $\rightarrow$ Returns Server IP Address (`93.184.216.34`).
+2. **TCP 3-Way Handshake**: Client sends `SYN` $\rightarrow$ Server replies `SYN-ACK` $\rightarrow$ Client sends `ACK`. Connection established!
+3. **TLS/SSL Handshake**: Negotiates asymmetric cipher keys (RSA/Diffie-Hellman) to secure HTTPS payload via symmetric AES-256 encryption.
+4. **HTTP Request/Response Cycle**: Browser sends `GET /index.html`. Request passes through CDN $\rightarrow$ Load Balancer $\rightarrow$ Web Server $\rightarrow$ Database. Server returns `200 OK` + HTML.
+5. **Browser Rendering Pipeline**: Browser parses HTML to build DOM Tree $\rightarrow$ CSS to build CSSOM Tree $\rightarrow$ Combines into Render Tree $\rightarrow$ V8 executes JS $\rightarrow$ Paints pixels on screen.
+
+---
+
+## 🗄️ Step 2: Databases (HLD Roadmap)
+
+Choosing the correct database architecture determines data consistency, availability, and storage throughput.
+
+---
+
+### 2.1 SQL vs NoSQL Databases
+
+#### 📂 Spreadsheets vs Document Folders Analogy
+* **SQL (Relational)**: Structured Excel spreadsheets with strict rows, columns, and foreign key relationships.
+* **NoSQL (Non-Relational)**: Unstructured folders containing dynamic JSON documents or Key-Value pairs.
+
+```
+[ SQL ]   : Tables with Rigid Schema (Row x Column) + Foreign Keys + ACID
+[ NoSQL ] : JSON Documents / Key-Value Stores + Dynamic Schema + BASE
+```
+
+| Feature | SQL Databases (RDBMS) | NoSQL Databases (Non-Relational) |
+| :--- | :--- | :--- |
+| **Examples** | PostgreSQL, MySQL, Oracle | MongoDB, Cassandra, Redis, DynamoDB |
+| **Data Schema** | Rigid, pre-defined tabular schema | Flexible, schema-less (JSON, Key-Value) |
+| **Consistency** | Strict **ACID** (Atomicity, Consistency, Isolation, Durability) | **BASE** (Basically Available, Soft-state, Eventual) |
+| **Scaling** | Primary Vertical Scaling; Read-Replicas | Native Horizontal Scaling (Auto-sharding) |
+| **Best For** | Financial systems, ERP, E-commerce Checkout | Real-time social feeds, Analytics, Big Data |
+
+---
+
+### 2.2 In-Memory Databases & Caching
+
+#### 📝 Desk Notepad vs Basement File Cabinet Analogy
+* Storing active work on your desk (RAM) provides instant access compared to walking down to a basement filing cabinet (Disk Database) every time.
+
+```
+[ Client ] ──► [ App Server ] ──1. Check Cache──► [ In-Memory Cache (Redis) ]
+                     │                            (< 1ms Response)
+                     └──2. Cache Miss ─────────► [ Disk Database (PostgreSQL) ]
+```
+
+#### Caching Strategies:
+1. **Cache-Aside (Lazy Loading)**: App reads Cache. If Miss $\rightarrow$ reads DB $\rightarrow$ writes to Cache $\rightarrow$ returns data. (Most popular).
+2. **Write-Through**: App writes to Cache $\rightarrow$ Cache synchronously writes to DB. (Guarantees data consistency).
+3. **Write-Back (Write-Behind)**: App writes to Cache $\rightarrow$ Cache asynchronously writes to DB in background batches. (Ultra-fast writes, but risk of data loss on power crash).
+
+#### Cache Eviction Policies:
+* **LRU (Least Recently Used)**: Evicts keys that haven't been requested for the longest time.
+* **LFU (Least Frequently Used)**: Evicts keys with the lowest total access frequency.
+* **TTL (Time To Live)**: Key automatically expires after X seconds.
+
+---
+
+### 2.3 Data Replication & Migration
+
+Replication photocopies data across multiple database nodes to prevent data loss and increase read throughput.
+
+```
+[ Single-Leader ] : [ Master (Writes) ] ──► [ Replica 1 (Reads) ] + [ Replica 2 (Reads) ]
+```
+
+#### Replication Architecture Models:
+1. **Single-Leader (Master-Replica)**: 1 Master Node processes all Writes; multiple Replicas process Reads. (Ideal for read-heavy apps like Twitter/Reddit).
+2. **Multi-Leader (Master-Master)**: Multiple masters across different data centers process Writes. (Requires conflict resolution).
+3. **Leaderless (Cassandra/Dynamo)**: Any node accepts Writes and Reads. Uses Quorum Voting ($R + W > N$) to ensure consistency.
+
+#### Zero-Downtime Migration Strategy:
+1. **Dual-Writing**: Application writes all new incoming data to BOTH Old DB & New DB simultaneously.
+2. **Backfill**: Copy past historical data from Old DB to New DB via Change Data Capture (CDC).
+3. **Verify**: Run checksum validation to ensure data identity.
+4. **Switch Reads**: Route client read queries to New DB.
+5. **Deprecate**: Stop dual-writing and decommission Old DB.
+
+---
+
+### 2.4 Data Partitioning
+
+Partitioning splits a massive single dataset into smaller, isolated subsets to accelerate queries.
+
+```
+[ Vertical Partitioning ]   : Table A (id, email) | Table B (id, heavy_bio_text, avatar_blob)
+[ Horizontal Partitioning ] : Partition 1 (IDs 1-1M) | Partition 2 (IDs 1M-2M)
+```
+
+1. **Vertical Partitioning**: Splitting a table by **COLUMNS**. Keeps frequent lightweight columns together and moves heavy BLOB columns to a separate table.
+2. **Horizontal Partitioning**: Splitting a table by **ROWS** using a partitioning strategy:
+   * *Range-Based*: Partition by date ranges (e.g. `orders_2024`, `orders_2025`).
+   * *Hash-Based*: `Partition = Hash(user_id) % Total_Partitions` (Prevents traffic hotspots).
+   * *List-Based*: Partition by explicit categories (e.g. Region: `US`, `EU`, `ASIA`).
+
+---
+
+### 2.5 Database Sharding
+
+Sharding is horizontal partitioning **across separate physical database servers (nodes)**.
+
+```
+[ Client Request ] ──► [ Shard Router ] ──► Hash(User_ID)
+                                               ├── Shard Node 1 (Users 1-100k)
+                                               ├── Shard Node 2 (Users 100k-200k)
+                                               └── Shard Node 3 (Users 200k-300k)
+```
+
+#### Key Concepts:
+1. **Shard Key Selection**:
+   * The primary column used to route queries to specific shard nodes (e.g. `user_id`, `tenant_id`).
+   * *Good Key*: High cardinality, even data distribution across nodes.
+   * *Bad Key*: Low cardinality (e.g. `gender`), creates massive single-node hotspots.
+2. **Consistent Hashing**:
+   * Uses a 360-degree virtual Hash Ring to assign data to server nodes. Adding or removing a database node only requires remapping $1/N$ of keys instead of rebuilding 99% of the cluster.
+3. **Challenges of Sharding**:
+   * *Cross-Shard Joins*: SQL `JOIN` across different physical servers is impossible natively; must be handled in application layer.
+   * *Distributed Transactions*: Updating Shard A and Shard B requires 2-Phase Commit (2PC) or Saga Pattern.
+
+---
 
 ---
 
